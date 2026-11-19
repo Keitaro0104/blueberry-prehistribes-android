@@ -9,9 +9,18 @@ import com.keitaro0104.blueberryprehistribes.TribesGame
 class AndroidLauncher : AndroidApplication() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
+        CrashLog.log("Launcher onCreate")
         val config = AndroidApplicationConfiguration().apply {
             useImmersiveMode = true
         }
-        initialize(TribesGame(), config)
+        CrashLog.log("before initialize")
+        initialize(TribesGame(logger = { CrashLog.log(it) }), config)
+        CrashLog.log("after initialize")
+    }
+
+    override fun onDestroy() {
+        CrashLog.cleanExit(this)
+        super.onDestroy()
     }
 }

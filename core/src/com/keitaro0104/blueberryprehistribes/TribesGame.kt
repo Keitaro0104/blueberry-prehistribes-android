@@ -28,7 +28,7 @@ import kotlin.math.floor
  * Known M1 limitations (see README): no fog of war yet (all tiles are
  * shown), no villagers/buildings/combat, no audio, no saves, no mods folder.
  */
-class TribesGame : ApplicationAdapter() {
+class TribesGame(private val logger: ((String) -> Unit)? = null) : ApplicationAdapter() {
 
     companion object {
         /** Original tile size in px, reused as world units (MA-MAPS.md). */
@@ -60,13 +60,16 @@ class TribesGame : ApplicationAdapter() {
         private set
 
     override fun create() {
+        logger?.invoke("TribesGame.create start")
         map = MapLoader.load(Gdx.files.internal(MAP_FILE))
         Gdx.app.log("TribesGame", "Loaded map '${map.name}' ${map.width}x${map.height}")
+        logger?.invoke("map loaded '${map.name}' ${map.width}x${map.height}")
 
         batch = SpriteBatch()
         shapes = ShapeRenderer()
         font = BitmapFont() // libGDX built-in default font; no asset needed
         font.color = Color.WHITE
+        logger?.invoke("renderers created")
 
         camera = OrthographicCamera(TILES_ACROSS * TILE_W, TILES_ACROSS * TILE_W)
         hudCamera = OrthographicCamera()
@@ -74,6 +77,7 @@ class TribesGame : ApplicationAdapter() {
         centerOnPlayerStart()
 
         Gdx.input.inputProcessor = GestureDetector(TouchInput(this))
+        logger?.invoke("create done, input set")
     }
 
     override fun resize(width: Int, height: Int) {
@@ -116,7 +120,13 @@ class TribesGame : ApplicationAdapter() {
         tickCount++
     }
 
+    private var firstRenderLogged = false
+
     override fun render() {
+        if (!firstRenderLogged) {
+            firstRenderLogged = true
+            logger?.invoke("first render")
+        }
         // Fixed timestep: never fast-forward after a slow frame.
         accumulator += Math.min(Gdx.graphics.deltaTime, 0.25f)
         while (accumulator >= TICK_SECONDS) {
@@ -199,6 +209,7 @@ class TribesGame : ApplicationAdapter() {
     }
 
     override fun dispose() {
+        logger?.invoke("dispose (clean exit)")
         batch.dispose()
         shapes.dispose()
         font.dispose()

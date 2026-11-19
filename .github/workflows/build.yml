@@ -40,3 +40,31 @@ jobs:
         with:
           name: debug-apk
           path: android/build/outputs/apk/debug/*.apk
+
+      # The APK force-closes instantly on a real Android 16 phone and leaves
+      # no log behind, so reproduce it on an Android 16 emulator here and
+      # capture the full logcat — that shows the real crash, Java or native.
+      - name: Run on Android 16 emulator and capture logcat
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb logcat -c
+            adb install -r android/build/outputs/apk/debug/android-debug.apk
+            adb shell dumpsys package com.keitaro0104.blueberryprehistribes | grep -E "versionName|versionCode"
+            adb shell am start -n com.keitaro0104.blueberryprehistribes/.android.AndroidLauncher || true
+            sleep 20
+            adb shell pidof com.keitaro0104.blueberryprehistribes && echo "APP STILL RUNNING" || echo "APP NOT RUNNING"
+            adb logcat -d > logcat.txt
+            echo "=== crash lines ==="
+            grep -i -E "FATAL|AndroidRuntime|tombstone|fatal|SIGSEGV|SIGABRT" logcat.txt | head -n 80 || true
+
+      - name: Upload emulator logcat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-logcat
+          path: logcat.txt

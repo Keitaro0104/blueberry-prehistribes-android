@@ -14,24 +14,30 @@ import java.util.Locale
 /**
  * Crash + session logging for the Android port.
  *
- * Every launch writes timestamped stage lines to a session log file in the
- * app's own external files dir (no permission needed, survives a crash).
- * On every force close — managed exception OR native crash — a copy of the
- * log ends up in the phone's Download folder as
- * `BlueberryTribes-log_<timestamp>.txt`:
+ * The log is written to TWO places from the very first line, so a force
+ * close can never leave us with nothing:
  *
- * - Managed exception (Java/Kotlin): the global uncaught-exception handler
- *   appends the stack trace and exports the log to Download immediately.
- * - Native crash (the process dies without an exception): the log file is
- *   still on disk. At the next launch, if the "running" marker from the
- *   previous run is still there, the previous run never exited cleanly,
- *   so the old session log is exported to Download before a new one starts.
+ * 1. A session log file in the app's own external files dir (no permission
+ *    needed, survives a crash).
+ * 2. A live file in the phone's Download folder, created the moment the app
+ *    starts (`BlueberryTribes-log_<timestamp>.txt`). Every stage line is
+ *    written to it and flushed immediately, so even a native crash one
+ *    millisecond after launch leaves a readable log in Download — no second
+ *    launch needed.
+ *
+ * On top of that, for a managed exception (Java/Kotlin) the global
+ * uncaught-exception handler appends the stack trace to the live file.
+ * And if a previous run died without a clean exit (leftover "running"
+ * marker), its session log is exported to Download at the next launch.
  */
 object CrashLog {
     private const val SESSION_FILE = "tribes-session.log"
     private const val MARKER_FILE = "tribes-running.marker"
 
     private var sessionFile: File? = null
+
+    /** Open stream to the live log file in Download, if it could be created. */
+    private var downloadStream: java.io.OutputStream? = null
 
     private fun timestamp(): String =
         SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -63,6 +69,9 @@ object CrashLog {
         marker.createNewFile()
         sessionFile = oldSession
         sessionFile?.writeText("=== Blueberry Tribes session ${stamp()} ===\n")
+        // Open the live Download log NOW: if the app dies a millisecond
+        // later, the lines already flushed are still there to read.
+        downloadStream = openDownloadStream(context)
         log(
             "session start | ${Build.MANUFACTURER} ${Build.MODEL} | " +
                 "Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) | " +
@@ -83,7 +92,16 @@ object CrashLog {
                     if (cause != null) trace.append("Caused by: ")
                 }
                 log(trace.toString())
-                exportToDownloads(context, sessionFile?.readText(Charsets.UTF_8).orEmpty())
+                try {
+                    // The live Download file already holds the whole trace.
+                    downloadStream?.flush()
+                    downloadStream?.close()
+                } catch (_: Exception) {
+                }
+                // If the live file never opened, fall back to a full export.
+                if (downloadStream == null) {
+                    exportToDownloads(context, sessionFile?.readText(Charsets.UTF_8).orEmpty())
+                }
             } catch (_: Exception) {
                 // Never let the crash handler itself crash.
             }
@@ -91,12 +109,19 @@ object CrashLog {
         }
     }
 
-    /** Append one timestamped line to the session log. Safe to call from anywhere. */
+    /** Append one timestamped line to the session log and the live Download file. */
     fun log(line: String) {
+        val text = "[${stamp()}] $line\n"
         try {
-            sessionFile?.appendText("[${stamp()}] $line\n")
+            sessionFile?.appendText(text)
         } catch (_: Exception) {
             // Logging must never break the game.
+        }
+        try {
+            downloadStream?.write(text.toByteArray(Charsets.UTF_8))
+            downloadStream?.flush()
+        } catch (_: Exception) {
+            // The live file is best-effort; the session file is the backup.
         }
     }
 
@@ -104,10 +129,42 @@ object CrashLog {
     fun cleanExit(context: Context) {
         try {
             log("clean exit")
+            downloadStream?.close()
+        } catch (_: Exception) {
+            // Ignore.
+        }
+        try {
             val dir = context.getExternalFilesDir(null) ?: context.filesDir
             File(dir, MARKER_FILE).delete()
         } catch (_: Exception) {
             // Ignore.
+        }
+    }
+
+    /**
+     * Create the live log file in the phone's Download folder and return an
+     * open stream to it, or null when it cannot be created. The file appears
+     * in Download the moment the app starts, even if the app dies right after.
+     */
+    private fun openDownloadStream(context: Context): java.io.OutputStream? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "BlueberryTribes-log_${timestamp()}.txt")
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = context.contentResolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                ) ?: return null
+                context.contentResolver.openOutputStream(uri)
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                dir.mkdirs()
+                File(dir, "BlueberryTribes-log_${timestamp()}.txt").outputStream()
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 

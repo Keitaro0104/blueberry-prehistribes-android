@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import com.keitaro0104.blueberryprehistribes.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date

@@ -1,0 +1,23 @@
+// Root build file — Prehistoric Tribes Android port (M1).
+// Minimal hand-written Gradle setup: libGDX 1.12.1 + Kotlin 2.0, AGP 8.5.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.2'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    ext {
+        gdxVersion = '1.12.1'
+    }
+}

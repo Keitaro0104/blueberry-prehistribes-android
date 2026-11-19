@@ -1,0 +1,78 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+    namespace 'com.keitaro0104.blueberryprehistribes'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.keitaro0104.blueberryprehistribes'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0-m1'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    // Map JSON lives in core/assets and is shared with the desktop module.
+    sourceSets {
+        main {
+            assets.srcDirs = ['../core/assets']
+            // Native .so files extracted from the gdx-platform natives jars (see copyAndroidNatives below).
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+}
+
+configurations {
+    natives
+}
+
+dependencies {
+    implementation project(':core')
+    api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+}
+
+// Unpack the .so files from the natives jars into libs/<abi>/, where AGP
+// picks them up as JNI libs. This is the standard libGDX template pattern:
+// a plain `api` dependency on a natives jar would not package the .so files.
+task copyAndroidNatives {
+    doFirst {
+        file("libs/armeabi-v7a/").mkdirs()
+        file("libs/arm64-v8a/").mkdirs()
+        file("libs/x86_64/").mkdirs()
+        configurations.natives.files.each { jar ->
+            def outputDir = null
+            if (jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
+            if (jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
+            if (jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
+            if (outputDir != null) {
+                copy {
+                    from zipTree(jar)
+                    into outputDir
+                    include "*.so"
+                }
+            }
+        }
+    }
+}
+tasks.named('preBuild') {
+    dependsOn copyAndroidNatives
+}

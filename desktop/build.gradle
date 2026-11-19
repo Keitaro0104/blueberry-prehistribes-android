@@ -1,0 +1,31 @@
+apply plugin: 'application'
+apply plugin: 'org.jetbrains.kotlin.jvm'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+application {
+    mainClass = 'com.keitaro0104.blueberryprehistribes.desktop.DesktopLauncher'
+}
+
+// The desktop backend loads internal files from the classpath, so the
+// core assets folder (with mods/green-valley.json) is on the classpath.
+sourceSets {
+    main {
+        java.srcDirs = ['src']
+        kotlin.srcDirs = ['src']
+        resources.srcDirs += [project(':core').file('assets').path]
+    }
+}
+
+dependencies {
+    implementation project(':core')
+    api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}

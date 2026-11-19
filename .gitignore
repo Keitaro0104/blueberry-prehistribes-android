@@ -1,0 +1,13 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+# IDE
+.idea/
+*.iml
+# OS
+.DS_Store
+# Local downloads used to set up the build environment (not part of the project)
+downloads/

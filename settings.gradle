@@ -1,0 +1,2 @@
+rootProject.name = 'prehistoric-tribes-android'
+include 'core', 'android', 'desktop'

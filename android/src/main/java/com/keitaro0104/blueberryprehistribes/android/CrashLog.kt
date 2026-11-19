@@ -39,14 +39,26 @@ object CrashLog {
     private fun stamp(): String =
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
 
-    /** Call first in AndroidLauncher.onCreate, before anything else. */
+    /** Call from Application.onCreate, before any activity starts. */
     fun install(context: Context) {
+        try {
+            installInner(context)
+        } catch (_: Exception) {
+            // Logging must never break the app.
+        }
+    }
+
+    private fun installInner(context: Context) {
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
         val marker = File(dir, MARKER_FILE)
         val oldSession = File(dir, SESSION_FILE)
         // A leftover marker means the previous run died without a clean exit.
         if (marker.exists() && oldSession.exists()) {
-            exportToDownloads(context, oldSession.readText(Charsets.UTF_8))
+            try {
+                exportToDownloads(context, oldSession.readText(Charsets.UTF_8))
+            } catch (_: Exception) {
+                // If the old log cannot be read, start fresh anyway.
+            }
         }
         marker.createNewFile()
         sessionFile = oldSession

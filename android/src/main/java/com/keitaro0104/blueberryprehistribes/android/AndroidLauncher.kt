@@ -9,7 +9,6 @@ import com.keitaro0104.blueberryprehistribes.TribesGame
 class AndroidLauncher : AndroidApplication() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CrashLog.install(this)
         CrashLog.log("Launcher onCreate")
         val config = AndroidApplicationConfiguration().apply {
             useImmersiveMode = true

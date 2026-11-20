@@ -28,11 +28,13 @@ import java.util.Locale
  * On top of that, for a managed exception (Java/Kotlin) the global
  * uncaught-exception handler appends the stack trace to the live file.
  * And if a previous run died without a clean exit (leftover "running"
- * marker), its session log is exported to Download at the next launch.
+ * marker), its session log is kept as `tribes-last-crash.log` (shown on the
+ * diagnostic screen) and exported to Download at the next launch.
  */
 object CrashLog {
     private const val SESSION_FILE = "tribes-session.log"
     private const val MARKER_FILE = "tribes-running.marker"
+    private const val LAST_CRASH_FILE = "tribes-last-crash.log"
 
     private var sessionFile: File? = null
 
@@ -59,7 +61,13 @@ object CrashLog {
         val marker = File(dir, MARKER_FILE)
         val oldSession = File(dir, SESSION_FILE)
         // A leftover marker means the previous run died without a clean exit.
+        // Keep its log for the diagnostic screen before starting fresh.
         if (marker.exists() && oldSession.exists()) {
+            try {
+                File(dir, LAST_CRASH_FILE).writeText(oldSession.readText(Charsets.UTF_8))
+            } catch (_: Exception) {
+                // If the old log cannot be read, start fresh anyway.
+            }
             try {
                 exportToDownloads(context, oldSession.readText(Charsets.UTF_8))
             } catch (_: Exception) {
@@ -138,6 +146,26 @@ object CrashLog {
             File(dir, MARKER_FILE).delete()
         } catch (_: Exception) {
             // Ignore.
+        }
+    }
+
+    /** Current session log text (empty when logging never started). */
+    fun sessionText(): String {
+        return try {
+            sessionFile?.readText(Charsets.UTF_8).orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    /** Log of the previous run, when it died without a clean exit. */
+    fun lastCrashText(context: Context): String {
+        return try {
+            val dir = context.getExternalFilesDir(null) ?: context.filesDir
+            val last = File(dir, LAST_CRASH_FILE)
+            if (last.exists()) last.readText(Charsets.UTF_8) else ""
+        } catch (_: Exception) {
+            ""
         }
     }
 

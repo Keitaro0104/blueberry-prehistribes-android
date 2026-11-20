@@ -2,12 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:name=".TribesApp"
+        android:name=".android.TribesApp"
         android:allowBackup="true"
         android:label="Blueberry Tribes"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         <activity
-            android:name=".DiagActivity"
+            android:name=".android.DiagActivity"
             android:exported="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode">
             <intent-filter>
@@ -16,7 +16,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".AndroidLauncher"
+            android:name=".android.AndroidLauncher"
             android:exported="false"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode" />
     </application>

@@ -9,8 +9,8 @@ android {
         applicationId 'com.keitaro0104.blueberryprehistribes'
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName '0.1.4-m1-diag'
+        versionCode 6
+        versionName '0.1.5-m1-diag'
     }
 
     buildTypes {
